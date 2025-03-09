@@ -19,7 +19,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // ==================================================================================
 
-#include "/home/Cullen/FYP/convReverb/Convolutional-Reverberator/include/FFTConvolver.h"
+#include "/home/Cullen/FYP/Effects/Effects/include/FFTConvolver.h"
 
 #include <cassert>
 #include <cmath>

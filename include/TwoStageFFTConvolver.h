@@ -22,8 +22,8 @@
 #ifndef _FFTCONVOLVER_TWOSTAGEFFTCONVOLVER_H
 #define _FFTCONVOLVER_TWOSTAGEFFTCONVOLVER_H
 
-#include "/home/Cullen/FYP/convReverb/Convolutional-Reverberator/include/FFTConvolver.h"
-#include "/home/Cullen/FYP/convReverb/Convolutional-Reverberator/include/Utilities.h"
+#include "/home/Cullen/FYP/Effects/Effects/include/FFTConvolver.h"
+#include "/home/Cullen/FYP/Effects/Effects/include/Utilities.h"
 
 
 namespace fftconvolver

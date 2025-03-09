@@ -1,4 +1,4 @@
-#include "/home/Cullen/FYP/convReverb/Convolutional-Reverberator/include/WavFile.h"
+#include "/home/Cullen/FYP/Effects/Effects/include/WavFile.h"
 
 #include <iostream>
 #include <fstream>

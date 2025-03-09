@@ -2,9 +2,9 @@
 #include <vector>
 #include <cstring>
 #include <portaudio.h>
-#include "/home/Cullen/FYP/convReverb/Convolutional-Reverberator/include/TwoStageFFTConvolver.h"
-#include "/home/Cullen/FYP/convReverb/Convolutional-Reverberator/include/Utilities.h"
-#include "/home/Cullen/FYP/convReverb/Convolutional-Reverberator/include/WavFile.h"
+#include "/home/Cullen/FYP/Effects/Effects/include/TwoStageFFTConvolver.h"
+#include "/home/Cullen/FYP/Effects/Effects/include/Utilities.h"
+#include "/home/Cullen/FYP/Effects/Effects/include/WavFile.h"
 
 struct MyAudioData {
     fftconvolver::TwoStageFFTConvolver convolver;
