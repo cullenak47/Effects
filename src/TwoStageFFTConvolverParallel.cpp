@@ -29,9 +29,6 @@
 namespace fftconvolver
 {
 
-// In the corresponding header file, add a new member variable:
-// std::thread _backgroundThread;
-
 TwoStageFFTConvolver::TwoStageFFTConvolver() :
   _headBlockSize(0),
   _tailBlockSize(0),
@@ -230,10 +227,7 @@ void TwoStageFFTConvolver::process(const Sample* input, Sample* output, size_t l
 }
 
 
-//---------------------------------------------------------------------
-// Modified startBackgroundProcessing() to spawn a background thread.
-// This background thread will call doBackgroundProcessing() which now
-// spawns two worker threads.
+// startBackgroundProcessing spawns the background thread which itself spawns to background threads in doBackgroundProcessing
 void TwoStageFFTConvolver::startBackgroundProcessing()
 {
   _backgroundThread = std::thread(&TwoStageFFTConvolver::doBackgroundProcessing, this);
@@ -251,14 +245,13 @@ void TwoStageFFTConvolver::waitForBackgroundProcessing()
 }
 
 
-//---------------------------------------------------------------------
-// Modified doBackgroundProcessing() to spawn two threads concurrently.
-// We split the tail block into two halves and process each half in parallel.
+// Spawn to background threads concurrently
+// Split the tailblock in two
 void TwoStageFFTConvolver::doBackgroundProcessing()
 {
   // Determine the split size.
   size_t halfSize = _tailBlockSize / 2;
-  size_t remainder = _tailBlockSize - halfSize; // For odd _tailBlockSize, second half is larger.
+  size_t remainder = _tailBlockSize - halfSize; 
   
   // Spawn two threads to process each half concurrently.
   std::thread t1([this, halfSize](){
