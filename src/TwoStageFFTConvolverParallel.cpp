@@ -12,21 +12,25 @@
 // all copies or substantial portions of the Software.
 //
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-// FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-// COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-// IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+// WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+// CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // ==================================================================================
 
 #include "/home/Cullen/FYP/Effects/Effects/include/TwoStageFFTConvolver.h"
 
 #include <algorithm>
 #include <cmath>
-
+#include <thread>     // <-- Added for threading
+#include <cassert>
 
 namespace fftconvolver
 {
+
+// In the corresponding header file, add a new member variable:
+// std::thread _backgroundThread;
 
 TwoStageFFTConvolver::TwoStageFFTConvolver() :
   _headBlockSize(0),
@@ -41,16 +45,18 @@ TwoStageFFTConvolver::TwoStageFFTConvolver() :
   _tailInput(),
   _tailInputFill(0),
   _precalculatedPos(0),
-  _backgroundProcessingInput()
+  _backgroundProcessingInput(),
+  _backgroundThread()    // New member variable for background thread management
 {
 }
 
   
 TwoStageFFTConvolver::~TwoStageFFTConvolver()
 {
+  // Ensure any background thread is joined before destruction.
+  waitForBackgroundProcessing();
   reset();
 }
-
   
 void TwoStageFFTConvolver::reset()
 {
@@ -65,11 +71,15 @@ void TwoStageFFTConvolver::reset()
   _tailPrecalculated.clear();
   _tailInput.clear();
   _tailInputFill = 0;
-  _tailInputFill = 0;
   _precalculatedPos = 0;
   _backgroundProcessingInput.clear();
-}
 
+  // If a background thread is still running, join it.
+  if (_backgroundThread.joinable())
+  {
+    _backgroundThread.join();
+  }
+}
   
 bool TwoStageFFTConvolver::init(size_t headBlockSize,
                                 size_t tailBlockSize,
@@ -109,16 +119,16 @@ bool TwoStageFFTConvolver::init(size_t headBlockSize,
 
   if (irLen > _tailBlockSize)
   {
-    const size_t conv1IrLen = std::min(irLen-_tailBlockSize, _tailBlockSize);
-    _tailConvolver0.init(_headBlockSize, ir+_tailBlockSize, conv1IrLen);
+    const size_t conv1IrLen = std::min(irLen - _tailBlockSize, _tailBlockSize);
+    _tailConvolver0.init(_headBlockSize, ir + _tailBlockSize, conv1IrLen);
     _tailOutput0.resize(_tailBlockSize);
     _tailPrecalculated0.resize(_tailBlockSize);
   }
 
   if (irLen > 2 * _tailBlockSize)
   {
-    const size_t tailIrLen = irLen - (2*_tailBlockSize);
-    _tailConvolver.init(_tailBlockSize, ir+(2*_tailBlockSize), tailIrLen);
+    const size_t tailIrLen = irLen - (2 * _tailBlockSize);
+    _tailConvolver.init(_tailBlockSize, ir + (2 * _tailBlockSize), tailIrLen);
     _tailOutput.resize(_tailBlockSize);
     _tailPrecalculated.resize(_tailBlockSize);
     _backgroundProcessingInput.resize(_tailBlockSize);
@@ -137,10 +147,10 @@ bool TwoStageFFTConvolver::init(size_t headBlockSize,
 
 void TwoStageFFTConvolver::process(const Sample* input, Sample* output, size_t len)
 {
-  // Head
+  // Process head convolution immediately on the real-time thread.
   _headConvolver.process(input, output, len);
 
-  // Tail
+  // Process tail convolution.
   if (_tailInput.size() > 0)
   {
     size_t processed = 0;
@@ -150,26 +160,26 @@ void TwoStageFFTConvolver::process(const Sample* input, Sample* output, size_t l
       const size_t processing = std::min(remaining, _headBlockSize - (_tailInputFill % _headBlockSize));
       assert(_tailInputFill + processing <= _tailBlockSize);
 
-      // Sum head and tail
+      // Sum head and tail results into the output.
       const size_t sumBegin = processed;
       const size_t sumEnd = processed + processing;
       {
-        // Sum: 1st tail block
+        // Sum: 1st tail block (processed in the main thread).
         if (_tailPrecalculated0.size() > 0)
         {      
           size_t precalculatedPos = _precalculatedPos;
-          for (size_t i=sumBegin; i<sumEnd; ++i)
+          for (size_t i = sumBegin; i < sumEnd; ++i)
           {
             output[i] += _tailPrecalculated0[precalculatedPos];
             ++precalculatedPos;
           }
         }
 
-        // Sum: 2nd-Nth tail block
+        // Sum: 2nd-Nth tail block (processed in the background thread).
         if (_tailPrecalculated.size() > 0)
         {      
           size_t precalculatedPos = _precalculatedPos;
-          for (size_t i=sumBegin; i<sumEnd; ++i)
+          for (size_t i = sumBegin; i < sumEnd; ++i)
           {
             output[i] += _tailPrecalculated[precalculatedPos];
             ++precalculatedPos;
@@ -179,24 +189,24 @@ void TwoStageFFTConvolver::process(const Sample* input, Sample* output, size_t l
         _precalculatedPos += processing;
       }
 
-      // Fill input buffer for tail convolution
-      ::memcpy(_tailInput.data()+_tailInputFill, input+processed, processing * sizeof(Sample));
+      // Fill input buffer for tail convolution.
+      ::memcpy(_tailInput.data() + _tailInputFill, input + processed, processing * sizeof(Sample));
       _tailInputFill += processing;
       assert(_tailInputFill <= _tailBlockSize);
 
-      // Convolution: 1st tail block
+      // Process the 1st tail block immediately.
       if (_tailPrecalculated0.size() > 0 && _tailInputFill % _headBlockSize == 0)
       {
         assert(_tailInputFill >= _headBlockSize);
         const size_t blockOffset = _tailInputFill - _headBlockSize;
-        _tailConvolver0.process(_tailInput.data()+blockOffset, _tailOutput0.data()+blockOffset, _headBlockSize);
+        _tailConvolver0.process(_tailInput.data() + blockOffset, _tailOutput0.data() + blockOffset, _headBlockSize);
         if (_tailInputFill == _tailBlockSize)
         {          
           SampleBuffer::Swap(_tailPrecalculated0, _tailOutput0);
         }
       }
 
-      // Convolution: 2nd-Nth tail block (might be done in some background thread)
+      // Process the 2nd-Nth tail block using two threads in the background.
       if (_tailPrecalculated.size() > 0 &&
           _tailInputFill == _tailBlockSize &&
           _backgroundProcessingInput.size() == _tailBlockSize &&
@@ -220,20 +230,48 @@ void TwoStageFFTConvolver::process(const Sample* input, Sample* output, size_t l
 }
 
 
+//---------------------------------------------------------------------
+// Modified startBackgroundProcessing() to spawn a background thread.
+// This background thread will call doBackgroundProcessing() which now
+// spawns two worker threads.
 void TwoStageFFTConvolver::startBackgroundProcessing()
 {
-  doBackgroundProcessing();
+  _backgroundThread = std::thread(&TwoStageFFTConvolver::doBackgroundProcessing, this);
 }
 
 
+//---------------------------------------------------------------------
+// Wait for the background thread to finish processing.
 void TwoStageFFTConvolver::waitForBackgroundProcessing()
 {
+  if (_backgroundThread.joinable())
+  {
+    _backgroundThread.join();
+  }
 }
 
 
+//---------------------------------------------------------------------
+// Modified doBackgroundProcessing() to spawn two threads concurrently.
+// We split the tail block into two halves and process each half in parallel.
 void TwoStageFFTConvolver::doBackgroundProcessing()
 {
-  _tailConvolver.process(_backgroundProcessingInput.data(), _tailOutput.data(), _tailBlockSize);
+  // Determine the split size.
+  size_t halfSize = _tailBlockSize / 2;
+  size_t remainder = _tailBlockSize - halfSize; // For odd _tailBlockSize, second half is larger.
+  
+  // Spawn two threads to process each half concurrently.
+  std::thread t1([this, halfSize](){
+      _tailConvolver.process(_backgroundProcessingInput.data(), _tailOutput.data(), halfSize);
+  });
+  std::thread t2([this, halfSize, remainder](){
+      _tailConvolver.process(_backgroundProcessingInput.data() + halfSize,
+                              _tailOutput.data() + halfSize, remainder);
+  });
+  
+  // Wait for both threads to finish.
+  t1.join();
+  t2.join();
 }
     
 } // End of namespace fftconvolver
