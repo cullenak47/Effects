@@ -8,7 +8,7 @@ import("stdfaust.lib");
 reverb(fb1, fb2, damp, pdTime, modFreq1, modDepth1, modFreq2, modDepth2) =
     _ : sdelay(8192, 1024, int(pdTime))
       <: par(i,8, lpcf(combtuningL(i), fb1, damp))
-       :> seq(i,4, nested_apcf(allpasstuningL(i), fb2)) 
+       :> seq(i,4,apcf(allpasstuningL(i), -fb2)) 
 with {
     // ============== DUAL MODULATION ==============
     modSignal = 
@@ -24,9 +24,6 @@ with {
         ( ( *(a), delay(1024, dt) ) : + )
         ~ ( *( -a ) : delay(1024, dt) );
 
-    nested_apcf(dt, a) =
-        ( ( *(a), apcf(dt, a) ) : + )
-        ~ ( *( -a ) : apcf(dt, a) );
 
     origSR  = 44100;
     cTuning = (1116,1188,1277,1356,1422,1491,1557,1617);
@@ -57,7 +54,7 @@ with {
     origSR     = 44100;
     scaleroom  = 0.28;
     offsetroom = 0.7;
-    allpassfeed= -0.2;
+    allpassfeed= -0.5;
     scaledamp  = 0.4;
     fixedgain  = 0.1;
 
@@ -84,4 +81,4 @@ with {
     g = mainGroup(hslider("[8]Dry/Wet",0.2,0,1,0.01));
 };
 
-process = reverbDemo;
+process = +<:reverbDemo, reverbDemo;
