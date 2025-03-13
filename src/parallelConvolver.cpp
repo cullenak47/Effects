@@ -2,7 +2,7 @@
 #include <vector>
 #include <cstring>
 #include <portaudio.h>
-#include "/home/Cullen/FYP/Effects/Effects/include/TwoStageFFTConvolverParallel.h"
+#include "/home/Cullen/FYP/Effects/Effects/include/TwoStageConvolverParallel.h"
 #include "/home/Cullen/FYP/Effects/Effects/include/Utilities.h"
 #include "/home/Cullen/FYP/Effects/Effects/include/WavFile.h"
 
