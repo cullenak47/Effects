@@ -10,7 +10,7 @@
 
 // Include the Faust algorithmic reverb header/cpp 
 // (the file you modified above)
-#include "/home/Cullen/FYP/Effects/Effects/faust_programs/algorithmicReverb2.cpp"
+#include "/home/Cullen/FYP/Effects/Effects/faust_programs/algorithmicReverb.cpp"
 
 //-----------------------------------------------------------
 // Data structure to hold all processing data
