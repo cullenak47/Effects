@@ -15,7 +15,7 @@
 // headers. For brevity, we assume the minimal architecture code 
 // already includes them. 
 //-----------------------------------------------------------------
-#include "faust/gui/Meta.h"       //  from Faust
+#include "faust/gui/meta.h"       //  from Faust
 #include "faust/gui/UI.h"         //  from Faust
 #include "faust/dsp/dsp.h"        //  from Faust
 
