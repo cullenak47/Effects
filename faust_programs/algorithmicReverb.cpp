@@ -797,7 +797,7 @@ void setPosAndSize(LayoutUI* ui, float x_pos, float y_pos, float width, float he
     cout << "Height " << ui->getHeight() << endl;
 }
 #endif
-
+/**
 int main(int argc, char* argv[])
 {
     mydsp DSP;
@@ -816,7 +816,7 @@ int main(int argc, char* argv[])
         cout << "getParamLabel " << map_ui.getParamLabel(i) << endl;
     }
     */
-    
+/**    
 #ifdef LAYOUT_UI
     LayoutUI layout_ui;
     float width, height;
@@ -834,7 +834,7 @@ int main(int argc, char* argv[])
     audio.stop();
 #endif
 }
-
+*/
 /******************* END minimal.cpp ****************/
 
 
