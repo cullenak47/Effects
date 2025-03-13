@@ -19,17 +19,17 @@
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // ==================================================================================
 
-#include "/home/Cullen/FYP/Effects/Effects/include/TwoStageFFTConvolver.h"
+#include "/home/Cullen/FYP/Effects/Effects/include/TwoStageFFTConvolverParallel.h"
 
 #include <algorithm>
 #include <cmath>
-#include <thread>     // <-- Added for threading
+#include <thread>     // Added for threading
 #include <cassert>
 
 namespace fftconvolver
 {
 
-TwoStageFFTConvolver::TwoStageFFTConvolver() :
+TwoStageFFTConvolverParallel::TwoStageFFTConvolverParallel() :
   _headBlockSize(0),
   _tailBlockSize(0),
   _headConvolver(),
@@ -47,23 +47,22 @@ TwoStageFFTConvolver::TwoStageFFTConvolver() :
 {
 }
 
-  
-TwoStageFFTConvolver::~TwoStageFFTConvolver()
+TwoStageFFTConvolverParallel::~TwoStageFFTConvolverParallel()
 {
   // Ensure any background thread is joined before destruction.
   waitForBackgroundProcessing();
   reset();
 }
-  
-void TwoStageFFTConvolver::reset()
+
+void TwoStageFFTConvolverParallel::reset()
 {
   _headBlockSize = 0;
-  _tailBlockSize = 0;  
+  _tailBlockSize = 0;
   _headConvolver.reset();
   _tailConvolver0.reset();
   _tailOutput0.clear();
   _tailPrecalculated0.clear();
-  _tailConvolver.reset();  
+  _tailConvolver.reset();
   _tailOutput.clear();
   _tailPrecalculated.clear();
   _tailInput.clear();
@@ -77,11 +76,11 @@ void TwoStageFFTConvolver::reset()
     _backgroundThread.join();
   }
 }
-  
-bool TwoStageFFTConvolver::init(size_t headBlockSize,
-                                size_t tailBlockSize,
-                                const Sample* ir,
-                                size_t irLen)
+
+bool TwoStageFFTConvolverParallel::init(size_t headBlockSize,
+                                        size_t tailBlockSize,
+                                        const Sample* ir,
+                                        size_t irLen)
 {
   reset();
 
@@ -141,8 +140,7 @@ bool TwoStageFFTConvolver::init(size_t headBlockSize,
   return true;
 }
 
-
-void TwoStageFFTConvolver::process(const Sample* input, Sample* output, size_t len)
+void TwoStageFFTConvolverParallel::process(const Sample* input, Sample* output, size_t len)
 {
   // Process head convolution immediately on the real-time thread.
   _headConvolver.process(input, output, len);
@@ -226,17 +224,12 @@ void TwoStageFFTConvolver::process(const Sample* input, Sample* output, size_t l
   }
 }
 
-
-// startBackgroundProcessing spawns the background thread which itself spawns to background threads in doBackgroundProcessing
-void TwoStageFFTConvolver::startBackgroundProcessing()
+void TwoStageFFTConvolverParallel::startBackgroundProcessing()
 {
-  _backgroundThread = std::thread(&TwoStageFFTConvolver::doBackgroundProcessing, this);
+  _backgroundThread = std::thread(&TwoStageFFTConvolverParallel::doBackgroundProcessing, this);
 }
 
-
-//---------------------------------------------------------------------
-// Wait for the background thread to finish processing.
-void TwoStageFFTConvolver::waitForBackgroundProcessing()
+void TwoStageFFTConvolverParallel::waitForBackgroundProcessing()
 {
   if (_backgroundThread.joinable())
   {
@@ -244,10 +237,7 @@ void TwoStageFFTConvolver::waitForBackgroundProcessing()
   }
 }
 
-
-// Spawn to background threads concurrently
-// Split the tailblock in two
-void TwoStageFFTConvolver::doBackgroundProcessing()
+void TwoStageFFTConvolverParallel::doBackgroundProcessing()
 {
   // Determine the split size.
   size_t halfSize = _tailBlockSize / 2;
@@ -266,5 +256,5 @@ void TwoStageFFTConvolver::doBackgroundProcessing()
   t1.join();
   t2.join();
 }
-    
+
 } // End of namespace fftconvolver
