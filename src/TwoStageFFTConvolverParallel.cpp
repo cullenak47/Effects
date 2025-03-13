@@ -19,7 +19,7 @@
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // ==================================================================================
 
-#include "/home/Cullen/FYP/Effects/Effects/include/TwoStageFFTConvolverParallel.h"
+#include "/home/Cullen/FYP/Effects/Effects/include/TwoStageConvolverParallel.h"
 
 #include <algorithm>
 #include <cmath>
