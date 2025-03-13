@@ -11,7 +11,7 @@
 // Include the modified Faust algorithmic reverb code, which
 // defines class "AlgoVerbDSP" and has public fHsliderN fields
 // plus setter methods (setRoomSize, setDamping, etc.).
-#include "/home/Cullen/FYP/Effects/Effects/faust_programs/algorithmicReverb.cpp"
+#include "/home/Cullen/FYP/Effects/Effects/faust_programs/algorithmicReverb3.cpp"
 
 //-----------------------------------------------------------
 // Data structure to hold all processing data
