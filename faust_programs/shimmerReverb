@@ -1,0 +1,105 @@
+import("filter.lib");
+import("stdfaust.lib");
+  // Required for ef.transpose
+
+// ---------------------------------------
+// MAIN REVERB WITH SHIMMER STAGE
+// ---------------------------------------
+
+
+// implement a mixing matrix for the shimmer stage 
+reverb(fb1, fb2, damp, pdTime, modFreq1, modDepth1, modFreq2, modDepth2, shimmerShift, shimmerFB) =
+    // New signal chain with shimmer stage
+    _ : sdelay(8192, 1024, int(pdTime))          // Pre-delay
+      <: par(i, 3, shimmer_lpcf(shimmerTuning(i), shimmerFB, damp, shimmerShift)) // Shimmer combs
+      :>_<: par(i,6, lpcf(combtuningL(i), fb1, damp)) // Original combs
+       :> seq(i,4, apcf(1024, allpasstuningL(i), fb2))
+with {
+    // ============== SHIMMER COMB FILTER ==============
+    shimmer_lpcf(dt, fb, damp, shift) =   
+        (+:fdelay(10, float(dt)))*(1-fb)
+         ~ (*(1 - damp) 
+            : ef.transpose(2048, 256, shift) // Pitch shifter in feedback
+            : (+ ~ *(damp)) 
+            : *(fb));
+
+    // ============== ORIGINAL FILTERS ==============
+    lpcf(dt, fb, damp) =
+        (+:sdelay(2048, 1024, float(dt))) 
+         ~ (*(1 - damp) : (+ ~ *(damp)) : *(fb));
+
+    apcf(maxDelay, dt, a) = 
+        ( ( *(a), delay(maxDelay, dt) ) : + )
+        ~ ( *( -a ) : delay(maxDelay, dt) );
+
+    // ============== TUNING ARRAYS ==============
+    origSR  = 44100;
+    cTuning = (1116,1188,1277,1356,1422,1491);
+    aTuning = (131, 19, 349, 719);
+    sTuning = (0.1, 0.1);  // New shimmer-specific delays
+
+    // ============== MODULATION ==============
+    modSignal = 
+        (os.osc(modFreq1) * modDepth1) + 
+        (os.osc(modFreq2) * modDepth2);
+
+    combtuningL(i) = 
+        take(i+1, cTuning) * SR/origSR
+        : +(modSignal)
+        : int;
+
+    shimmerTuning(i) = take(1+1, sTuning) * SR/origSR : float;
+
+    allpasstuningL(i) = 
+        take(i+1, aTuning)*SR/origSR : int;
+};
+
+// ---------------------------------------
+// UPDATED UI WITH SHIMMER CONTROLS
+// ---------------------------------------
+reverbDemo = _,_
+    <: (
+        *(g)*fixedgain
+        : reverb(combfeed, allpassfeed, damping, preDelay, 
+                modFreq1, modDepth1, modFreq2, modDepth2,
+                shimmerShift, shimmerFB)
+      ),
+       *(1 - g)
+    :> _
+with {
+    // Original constants
+    origSR     = 44100;
+    scaleroom  = 0.28;
+    offsetroom = 0.7;
+    allpassfeed= 0.2;
+    scaledamp  = 0.4;
+    fixedgain  = 0.1;
+
+    // UI groups
+    mainGroup(x)  = vgroup("Reverb", x);
+    knobsGroup(x) = mainGroup(hgroup("[0]", x));
+
+    // Existing controls
+    combfeed  = knobsGroup(hslider("[0]Room Size [style:knob]",0.9,0,1,0.01) 
+                  * scaleroom*SR/origSR + offsetroom);
+
+    damping   = knobsGroup(hslider("[1]Damping [style:knob]",0.2,0,1,0.01) 
+                  * scaledamp*SR/origSR);
+
+    preDelay  = knobsGroup(hslider("[3]Pre Delay [style:knob]",0,0,0.1,0.001) * SR);
+
+    // Modulation controls
+    modFreq1  = knobsGroup(hslider("[4]LFO1 Freq [style:knob]",0,0,5,0.01));
+    modDepth1 = knobsGroup(hslider("[5]LFO1 Depth [style:knob]",0,0,100,1));
+    modFreq2  = knobsGroup(hslider("[6]LFO2 Freq [style:knob]",0,0,5,0.01));
+    modDepth2 = knobsGroup(hslider("[7]LFO2 Depth [style:knob]",0,0,100,1));
+
+    // Shimmer controls
+    shimmerShift = mainGroup(hslider("[8]Shimmer Pitch", 12, -12, 12, 12));
+    shimmerFB = mainGroup(hslider("[9]Shimmer FB", 0.4, 0, 0.5, 0.01));
+
+    // Dry/wet control
+    g = mainGroup(hslider("[10]Dry/Wet",0.4,0,1,0.01));
+};
+
+process = reverbDemo;
