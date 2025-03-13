@@ -10,7 +10,7 @@
 
 // Include the Faust-generated algorithmic reverb code
 // Make sure "algorithmicReverb.cpp" is in the same folder or adjust the path
-#include "/home/Cullen/FYP/Effects/Effects/src/algorithmicReverb.cpp"
+#include "/home/Cullen/FYP/Effects/Effects/faust_programs/algorithmicReverb.cpp"
 
 ///////////////////////////////////////////////////////////////////////////////
 // Data structure to hold all audio processing data
